@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MESA Quiz Game</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f9; text-align: center; margin:0;padding:0; }
+    #gameContainer { max-width: 900px; margin: auto; padding: 20px; }
+    .hidden { display: none; }
+    button { padding: 10px 20px; margin: 10px; font-size: 16px; cursor: pointer; border-radius: 8px; border: none; display: block; width: 70%; margin-left: auto; margin-right: auto; }
+    button.choice-btn { background: #007bff; color: white; }
+    button.choice-btn:hover { background: #0056b3; }
+    button.disabled { cursor: default; opacity: 0.6; }
+    #progress { margin: 20px 0; }
+    table { margin: 20px auto; border-collapse: collapse; width: 90%; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background: #007bff; color: white; }
+    .correct { background-color: #c8e6c9 !important; } /* green */
+    .wrong { background-color: #ffcdd2 !important; }   /* red */
+    #nextBtn { background: #28a745; color: white; }
+    #nextBtn:hover { background: #218838; }
+    #timerBarContainer { background: #ddd; border-radius: 8px; width: 80%; height: 20px; margin: 10px auto; overflow: hidden; }
+    #timerBar { height: 100%; background: #28a745; width: 100%; transition: width 0.1s linear; }
+  </style>
+</head>
+<body>
+<div id="gameContainer">
+  <h1>MESA Program Director Quiz</h1>
+
+  <div id="nameScreen">
+    <p>Enter your name to begin:</p>
+    <input type="text" id="playerName" placeholder="Your Name">
+    <br>
+    <button id="startBtn">Start Quiz</button>
+  </div>
+
+  <div id="quizScreen" class="hidden">
+    <h2 id="question"></h2>
+    <div id="choices"></div>
+    <div id="timerBarContainer"><div id="timerBar"></div></div>
+    <div id="progress"></div>
+    <button id="nextBtn" class="hidden">Next</button>
+  </div>
+
+  <div id="endScreen" class="hidden">
+    <h2>Quiz Complete!</h2>
+    <p id="finalScore"></p>
+    <div id="review"></div>
+    <button onclick="location.reload()">Play Again</button>
+  </div>
+</div>
+
+<script>
+const QUESTION_BANK = [
+  { q: "What is the primary purpose of MESA funds?", choices: ["To help students graduate quickly","To support educational equity in STEM for underrepresented students","To help STEM and Healthcare pathway students","To help STEM students"], correct: "To support educational equity in STEM for underrepresented students" },
+  { q: "Which of the following can MESA grant funds cover?", choices: ["STEM tutors or academic support staff","Unlimited Red Bull for “study sessions”","A golden calculator for every student","Faculty vacation trips to Hawaii"], correct: "STEM tutors or academic support staff" },
+  { q: "Can MESA funds be used for student scholarships directly?", choices: ["Yes, but only if they have a deans approval","No, scholarships are not an allowable direct expense","Only for students who promise to name their child “MESA”","Yes, for any STEM student"], correct: "No, scholarships are not an allowable direct expense" },
+  { q: "Which is an allowable cost MESA can cover?", choices: ["STEM-related field trips","VIP tickets to Coachella for “cultural enrichment”","Campus mascot costume cleaning","Coffee IV drips for late-night labs"], correct: "STEM-related field trips" },
+  { q: "Can MESA funds pay for student food?", choices: ["Yes, if it’s tied to a MESA educational workshop","No, food is never allowed under any circumstance","Yes, for general student club activities","Yes, for ongoing weekly social gatherings"], correct: "Yes, if it’s tied to a MESA educational workshop" },
+  { q: "Which training is MESA funds allowed to support?", choices: ["Professional development for MESA staff","General STEM travel","Student leadership unrelated to STEM transfer","Campus-wide events"], correct: "Professional development for MESA staff" },
+  { q: "MESA funds can legally purchase which of the following?", choices: ["Lab equipment used to support MESA activities","Furniture upgrades for the general library","Sports equipment","Campus security tools"], correct: "Lab equipment used to support MESA activities" },
+  { q: "Which phrase best fits MESA funds usage?", choices: ["Support, engage, and advance STEM students","Provide general college-wide services","Fund any student activity program","Cover indirect college costs"], correct: "Support, engage, and advance STEM students" },
+  { q: "Can MESA funds cover promotional materials?", choices: ["Yes, if modest (flyers, banners, T-shirts) for outreach","Yes, for large-scale athletic events","No, student recruitment is never allowed","Only for statewide campaigns"], correct: "Yes, if modest (flyers, banners, T-shirts) for outreach" },
+  { q: "Which food expense can be covered?", choices: ["Light meals for the yearly graduation of MESA students","Catering for general student body parties","Catering for tutoring events","Meals for STEM recruitment"], correct: "Light meals for the yearly graduation of MESA students" },
+  { q: "At the end of the day, MESA funds must always:", choices: ["Support MESA student success and transfer goals","Pay for general staff appreciation events","Fund student clubs and organizations","Assist administration with projects"], correct: "Support MESA student success and transfer goals" },
+  { q: "What type of student support expense is not allowed under the MESA grant?", choices: ["Costs for summer research programs","Amazon gift cards for STEM supplies","Expenses for four year campus tours","Support costs for student conferences"], correct: "Amazon gift cards for STEM supplies" },
+  { q: "Which of the following would be considered 'supplanting' and is NOT allowed?", choices: ["Buying calculators for a new MESA math lab","Paying an existing campus advisor with MESA funds","Hiring new tutors specific to MESA","Funding travel for MESA-specific conferences"], correct: "Paying an existing campus advisor with MESA funds" },
+  { q: "What is the maximum percentage of the state award that can be used for professional development for MESA staff?", choices: ["5%","10%","15%","25%"], correct: "10%" },
+  { q: "Which personnel cost is appropriate for MESA grant funding?", choices: ["A personal assistant for the dean","MESA program coordinators and student mentors","A full-time barista for the department","Professional party planners"], correct: "MESA program coordinators and student mentors" },
+  { q: "Which collaborative activity can MESA grants support?", choices: ["Inter-departmental softball leagues","Partnerships with UC MESA programs for seamless transfer","Office holiday party planning committees","Fantasy football leagues (even if they involve statistics)"], correct: "Partnerships with UC MESA programs for seamless transfer" },
+  { q: "MESA grants should focus on supporting students who are:", choices: ["Guaranteed admission to UCLA","Underrepresented in STEM fields and pursuing calculus-based degrees","Only interested in science majors","Planning to become professional influencers"], correct: "Underrepresented in STEM fields and pursuing calculus-based degrees" },
+  { q: "MESA grants can fund equipment for which purpose?", choices: ["Laboratory instruments and computer software for STEM education","A putting green for the faculty lounge","Personal gaming consoles","A popcorn machine (even though engineers love snacks)"], correct: "Laboratory instruments and computer software for STEM education" },
+  { q: "Which of the following is an allowable expense under the MESA grant for supporting STEM students?", choices: ["AEW’s calculus and physics students","Pizza party for meetings","New leather office chairs for administrators","A vacation to Hawaii for 'research purposes'"], correct: "AEW’s calculus and physics students" }
+];
+
+let currentQuestion = 0;
+let score = 0;
+let player = "";
+let incorrectAnswers = [];
+let timeLimit = 20; // seconds per question
+let timeLeft = timeLimit;
+let timerInterval;
+
+function showQuestion() {
+  const q = QUESTION_BANK[currentQuestion];
+  document.getElementById("question").textContent = q.q;
+  const choicesDiv = document.getElementById("choices");
+  choicesDiv.innerHTML = "";
+  document.getElementById("nextBtn").classList.add("hidden");
+
+  timeLeft = timeLimit;
+  updateTimerBar();
+  clearInterval(timerInterval);
+  timerInterval = setInterval(()=> {
+    timeLeft -= 0.1;
+    if(timeLeft <= 0){ timeLeft=0; checkAnswer(null); }
+    updateTimerBar();
+  },100);
+
+  q.choices.forEach(choice=>{
+    const btn = document.createElement("button");
+    btn.textContent = choice;
+    btn.className = "choice-btn";
+    btn.onclick = ()=> checkAnswer(choice, btn);
+    choicesDiv.appendChild(btn);
+  });
+
+  document.getElementById("progress").textContent = `Question ${currentQuestion+1} of ${QUESTION_BANK.length}`;
+}
+
+function updateTimerBar(){
+  const pct = (timeLeft/timeLimit)*100;
+  document.getElementById("timerBar").style.width = pct+"%";
+  if(pct>50) document.getElementById("timerBar").style.background="#28a745";
+  else if(pct>20) document.getElementById("timerBar").style.background="#ffc107";
+  else document.getElementById("timerBar").style.background="#dc3545";
+}
+
+function checkAnswer(answer, btn=null){
+  clearInterval(timerInterval);
+  const q = QUESTION_BANK[currentQuestion];
+  const correctAnswer = q.correct;
+  document.querySelectorAll("#choices button").forEach(b=>{
+    b.disabled=true;
+    b.classList.add("disabled");
+    if(b.textContent===correctAnswer) b.classList.add("correct");
+    if(answer && b.textContent===answer && answer!==correctAnswer) b.classList.add("wrong");
+  });
+
+  // calculate points based on speed
+  let points = 0;
+  if(answer===correctAnswer){
+    points = Math.round(100 * (timeLeft/timeLimit));
+    score += points;
+  } else {
+    incorrectAnswers.push({question:q.q, yourAnswer: answer||"No Answer", correctAnswer: correctAnswer});
+  }
+
+  document.getElementById("nextBtn").classList.remove("hidden");
+  document.getElementById("nextBtn").onclick = nextQuestion;
+}
+
+function nextQuestion(){
+  currentQuestion++;
+  if(currentQuestion<QUESTION_BANK.length) showQuestion();
+  else endQuiz();
+}
+
+function endQuiz(){
+  document.getElementById("quizScreen").classList.add("hidden");
+  document.getElementById("endScreen").classList.remove("hidden");
+  document.getElementById("finalScore").innerHTML = `${player}, you scored <b>${score}</b> points!`;
+
+  if(incorrectAnswers.length>0){
+    let reviewHTML="<h3>Questions you missed:</h3><table><tr><th>Question</th><th>Your Answer</th><th>Correct Answer</th></tr>";
+    incorrectAnswers.forEach(item=>{
+      reviewHTML+=`<tr><td>${item.question}</td><td>${item.yourAnswer}</td><td>${item.correctAnswer}</td></tr>`;
+    });
+    reviewHTML+="</table>";
+    document.getElementById("review").innerHTML = reviewHTML;
+  }
+}
+
+document.getElementById("startBtn").addEventListener("click",()=>{
+  const nameInput=document.getElementById("playerName").value.trim();
+  if(nameInput===""){ alert("Please enter your name."); return; }
+  player=nameInput;
+  document.getElementById("nameScreen").classList.add("hidden");
+  document.getElementById("quizScreen").classList.remove("hidden");
+  showQuestion();
+});
+</script>
+</body>
+</html>
+
